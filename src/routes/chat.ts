@@ -65,7 +65,7 @@ export async function chatRoutes(app: FastifyInstance) {
                 .from(messages).innerJoin(users, eq(messages.userId, users.id)).where(eq(messages.eventId, eventId)).orderBy(desc(messages.createdAt)).limit(limit).offset(offset);
             return reply.send(history.reverse());
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 

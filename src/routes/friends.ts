@@ -59,7 +59,7 @@ export async function friendRoutes(app: FastifyInstance) {
             await db.insert(friendships).values({ requesterId, addresseeId: targetUserId, status: 'pending' });
             return reply.send({ success: true, message: "Friend request sent" });
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -92,7 +92,7 @@ export async function friendRoutes(app: FastifyInstance) {
             if (res.length === 0) return reply.code(404).send({ error: "No pending request" });
             return reply.send({ success: true, message: "Friend request accepted" });
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -132,7 +132,7 @@ export async function friendRoutes(app: FastifyInstance) {
             const paginatedData = allFriends.slice(offset, offset + limit);
             return reply.send({ data: paginatedData, meta: { totalItems: allFriends.length, totalPages: Math.ceil(allFriends.length / limit), currentPage: page, itemsPerPage: limit } });
         } catch (err) {
-            return reply.code(500).send({ error: "Failed to fetch friends" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -164,7 +164,7 @@ export async function friendRoutes(app: FastifyInstance) {
                 .from(friendships).innerJoin(users, eq(friendships.requesterId, users.id)).where(and(eq(friendships.addresseeId, userId), eq(friendships.status, 'pending')));
             return reply.send(requests);
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -190,7 +190,7 @@ export async function friendRoutes(app: FastifyInstance) {
             if (result.length === 0) return reply.code(404).send({ error: "Friendship not found" });
             return reply.send({ success: true, message: "Friendship removed" });
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 }

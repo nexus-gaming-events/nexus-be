@@ -91,7 +91,7 @@ export async function eventRoutes(app: FastifyInstance) {
             });
             return reply.send(result);
         } catch (err) {
-            return reply.code(500).send({ error: 'Failed to create event' });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -139,7 +139,7 @@ export async function eventRoutes(app: FastifyInstance) {
             });
             return reply.send({ data, meta: { totalItems: totalResult.count, totalPages: Math.ceil(totalResult.count / limit), currentPage: page, itemsPerPage: limit } });
         } catch (err) {
-            return reply.code(500).send({ error: 'Database error' });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -186,7 +186,7 @@ export async function eventRoutes(app: FastifyInstance) {
             if (!event) return reply.code(404).send({ error: "Event not found" });
             return reply.send(event);
         } catch (err) {
-            return reply.code(500).send({ error: "Database error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -235,7 +235,7 @@ export async function eventRoutes(app: FastifyInstance) {
             const [updatedEvent] = await db.update(events).set(updateData).where(eq(events.id, eventId)).returning();
             return reply.send(updatedEvent);
         } catch (err) {
-            return reply.code(500).send({ error: "Update failed" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -270,7 +270,7 @@ export async function eventRoutes(app: FastifyInstance) {
             });
             return reply.send({ success: true, message: "Event deleted successfully" });
         } catch (err) {
-            return reply.code(500).send({ error: "Delete failed" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -343,7 +343,7 @@ export async function eventRoutes(app: FastifyInstance) {
             if (result.length === 0) return reply.code(404).send({ error: "Not a participant" });
             return reply.send({ success: true, message: "Left event" });
         } catch (err) {
-            return reply.code(500).send({ error: "Database error" });
+            return reply.code(500).send({ error: err });
         }
     });
 }

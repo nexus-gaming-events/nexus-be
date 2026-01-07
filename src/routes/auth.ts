@@ -270,4 +270,39 @@ export async function authRoutes(app: FastifyInstance) {
             return reply.type('text/html').send(`<h1>System Error</h1>`);
         }
     });
+
+    app.get("/me", {
+        schema: {
+            tags: ['Auth'],
+            summary: 'Get Current User Info',
+            response: {
+                200: {
+                    type: 'object',
+                    properties: {
+                        id: { type: 'integer' },
+                        username: { type: 'string' },
+                        email: { type: 'string', nullable: true },
+                        avatarUrl: { type: 'string', nullable: true }
+                    }
+                },
+                401: errorSchema,
+                500: errorSchema
+            }
+        },
+        preHandler: [app.authenticate]
+    }, async (req, reply) => {
+        const userId = (req.user as any).id;
+        try {
+            const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+            if (!user) return reply.code(401).send({ error: "User not found" });
+            return reply.send({
+                id: user.id,
+                username: user.username,
+                email: user.email,
+                avatarUrl: user.avatarUrl
+            });
+        } catch (dbError) {
+            return reply.code(500).send({ error: "Database error" });
+        }
+    });
 }

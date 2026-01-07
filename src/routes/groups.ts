@@ -55,7 +55,7 @@ export async function groupRoutes(app: FastifyInstance) {
             });
             return reply.send(result);
         } catch (err) {
-            return reply.code(500).send({ error: "Failed to create group" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -92,7 +92,7 @@ export async function groupRoutes(app: FastifyInstance) {
                 .from(groups).innerJoin(groupMembers, eq(groups.id, groupMembers.groupId)).where(eq(groupMembers.userId, userId)).limit(limit).offset(offset);
             return reply.send({ data: myGroups, meta: { totalItems: totalResult.count, totalPages: Math.ceil(totalResult.count / limit), currentPage: page, itemsPerPage: limit } });
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -119,7 +119,7 @@ export async function groupRoutes(app: FastifyInstance) {
             if (!group) return reply.code(404).send({ error: "Group not found" });
             return reply.send(group);
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -150,7 +150,7 @@ export async function groupRoutes(app: FastifyInstance) {
             const [updated] = await db.update(groups).set({ name: parse.data.name }).where(eq(groups.id, groupId)).returning();
             return reply.send(updated);
         } catch (err) {
-            return reply.code(500).send({ error: "Update failed" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -180,7 +180,7 @@ export async function groupRoutes(app: FastifyInstance) {
             });
             return reply.send({ success: true, message: "Group deleted" });
         } catch (err) {
-            return reply.code(500).send({ error: "Delete failed" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -213,7 +213,7 @@ export async function groupRoutes(app: FastifyInstance) {
             await db.insert(groupMembers).values({ groupId, userId: targetUserId }).onConflictDoNothing();
             return reply.send({ success: true, message: "Member added" });
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -254,7 +254,7 @@ export async function groupRoutes(app: FastifyInstance) {
                 .from(groupMembers).innerJoin(users, eq(groupMembers.userId, users.id)).where(eq(groupMembers.groupId, groupId)).limit(limit).offset(offset);
             return reply.send({ data: members, meta: { totalItems: countRes.count, totalPages: Math.ceil(countRes.count / limit), currentPage: page, itemsPerPage: limit } });
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -285,7 +285,7 @@ export async function groupRoutes(app: FastifyInstance) {
             if (result.length === 0) return reply.code(404).send({ error: "Member not found" });
             return reply.send({ success: true, message: "Member removed" });
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 
@@ -313,7 +313,7 @@ export async function groupRoutes(app: FastifyInstance) {
             if (result.length === 0) return reply.code(404).send({ error: "Not a member" });
             return reply.send({ success: true, message: "Left group" });
         } catch (err) {
-            return reply.code(500).send({ error: "DB Error" });
+            return reply.code(500).send({ error: err });
         }
     });
 }

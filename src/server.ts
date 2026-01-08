@@ -11,6 +11,7 @@ import { eventRoutes } from './routes/events';
 import { friendRoutes } from './routes/friends';
 import { groupRoutes } from './routes/groups';
 import { chatRoutes } from './routes/chat';
+import { userRoutes } from "./routes/users";
 
 export function buildApp(): FastifyInstance {
     const app = Fastify({
@@ -54,6 +55,7 @@ export function buildApp(): FastifyInstance {
     app.register(friendRoutes);
     app.register(groupRoutes);
     app.register(chatRoutes);
+    app.register(userRoutes);
 
     return app;
 }

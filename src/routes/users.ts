@@ -15,6 +15,7 @@ export async function userRoutes(app: FastifyInstance) {
     app.get('/users', {
         schema: {
             description: 'Get all users',
+            security: [{ apiKey: [] }],
             tags: ['Users'],
             response: {
                 200: {
@@ -45,6 +46,7 @@ export async function userRoutes(app: FastifyInstance) {
     app.get('/users/:id', {
         schema: {
             description: 'Get user by ID',
+            security: [{ apiKey: [] }],
             tags: ['Users'],
             params: {
                 type: 'object',

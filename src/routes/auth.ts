@@ -272,6 +272,7 @@ export async function authRoutes(app: FastifyInstance) {
     app.get("/me", {
         schema: {
             tags: ['Auth'],
+            security: [{ apiKey: [] }],
             summary: 'Get Current User Info',
             response: {
                 200: {

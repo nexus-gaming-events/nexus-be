@@ -48,6 +48,9 @@ export function buildApp(): FastifyInstance {
         routePrefix: '/docs',
         staticCSP: true,
         transformStaticCSP: (header) => header,
+        uiConfig: {
+            persistAuthorization: true,
+        }
     });
 
     // 3. Register Business Routes

@@ -68,7 +68,7 @@ export function buildApp(): FastifyInstance {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta name="google-site-verification" content="lc4oGdJaC7MhnJEN-e5FV0c87LqbQTWAWvfruVaUxX8" />
-        <title>Nexus API</title>
+        <title>Nexus Gaming Events</title>
         <style>
           body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -116,7 +116,7 @@ export function buildApp(): FastifyInstance {
       <body>
         <div class="container">
           <h1>Nexus Gaming Events</h1>
-          <p>Backend services for the Nexus Gaming Platform.</p>
+          <p>Backend services for the Nexus Gaming Events Platform.</p>
           
           <div class="links">
             <a href="/docs">📄 API Documentation</a>

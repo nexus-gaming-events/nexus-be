@@ -100,35 +100,33 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     // DEV LOGIN
-    if (process.env.NODE_ENV !== 'production') {
-        app.post('/auth/dev-login', {
-            schema: {
-                tags: ['Auth'],
-                summary: 'Dev: Generate Test Token',
-                body: {
+    app.post('/auth/dev-login', {
+        schema: {
+            tags: ['Auth'],
+            summary: 'Dev: Generate Test Token',
+            body: {
+                type: 'object',
+                required: ['username'],
+                properties: { username: { type: 'string', default: 'testuser' } }
+            },
+            response: {
+                200: {
                     type: 'object',
-                    required: ['username'],
-                    properties: { username: { type: 'string', default: 'testuser' } }
+                    properties: { token: { type: 'string' }, message: { type: 'string' } }
                 },
-                response: {
-                    200: {
-                        type: 'object',
-                        properties: { token: { type: 'string' }, message: { type: 'string' } }
-                    },
-                    500: errorSchema
-                }
+                500: errorSchema
             }
-        }, async (req, reply) => {
-            const { username } = req.body as { username: string };
-            let user = await db.query.users.findFirst({ where: eq(users.username, username) });
-            if (!user) {
-                const [newUser] = await db.insert(users).values({ username, email: `${username}@dev.local` }).returning();
-                user = newUser;
-            }
-            const token = app.jwt.sign({ id: user.id, email: user.email!, username: user.username });
-            return reply.send({ token, message: "Use this token in the 'Authorize' button at the top right!" });
-        });
-    }
+        }
+    }, async (req, reply) => {
+        const { username } = req.body as { username: string };
+        let user = await db.query.users.findFirst({ where: eq(users.username, username) });
+        if (!user) {
+            const [newUser] = await db.insert(users).values({ username, email: `${username}@dev.local` }).returning();
+            user = newUser;
+        }
+        const token = app.jwt.sign({ id: user.id, email: user.email!, username: user.username });
+        return reply.send({ token, message: "Use this token in the 'Authorize' button at the top right!" });
+    });
 
     // API LOGIN
     app.post('/auth/login', {

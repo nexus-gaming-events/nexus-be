@@ -114,7 +114,7 @@ export function buildApp(): FastifyInstance {
       </head>
       <body>
         <div class="container">
-          <h1>Nexus API</h1>
+          <h1>Nexus Gaming Events</h1>
           <p>Backend services for the Nexus Gaming Platform.</p>
           
           <div class="links">

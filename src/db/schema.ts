@@ -1,4 +1,16 @@
-import { pgTable, serial, text, timestamp, integer, boolean, pgEnum, primaryKey, unique, index } from 'drizzle-orm/pg-core';
+import {
+    pgTable,
+    serial,
+    text,
+    timestamp,
+    integer,
+    boolean,
+    pgEnum,
+    primaryKey,
+    unique,
+    index,
+    jsonb
+} from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Enums
@@ -14,6 +26,11 @@ export const users = pgTable('users', {
     discordId: text('discord_id').unique(),
     steamId: text('steam_id').unique(),
     googleId: text('google_id').unique(),
+    bannerGradient: jsonb('banner_gradient').default({
+        type: 'linear',
+        colors: ['0xFF0000FF', '0xFFFF00FF'],
+        parameter: 0.0
+    }),
     createdAt: timestamp('created_at').defaultNow(),
     updatedAt: timestamp('updated_at').defaultNow(),
 }, (t) => ({

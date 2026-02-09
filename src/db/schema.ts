@@ -7,7 +7,6 @@ import {
     boolean,
     pgEnum,
     primaryKey,
-    unique,
     index,
     jsonb
 } from 'drizzle-orm/pg-core';
@@ -76,6 +75,8 @@ export const events = pgTable('events', {
     maxPlayers: integer('max_players').default(5).notNull(),
     maxSpectators: integer('max_spectators').default(2).notNull(),
     isCancelled: boolean('is_cancelled').default(false),
+    groupId: integer('group_id').references(() => groups.id), // Nullable (if null, not a group event)
+    onlyFriends: boolean('only_friends').default(false), // If true, only friends see it
     createdAt: timestamp('created_at').defaultNow(),
 });
 

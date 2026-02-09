@@ -1,8 +1,9 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../db';
-import { events, participants, messages } from '../db/schema';
-import { eq, and, count, desc } from 'drizzle-orm';
+import { events, participants, messages, groupMembers, users, friendships } from '../db/schema';
+import { eq, and, count, desc, or, not } from 'drizzle-orm';
 import { z } from 'zod';
+import { OAuth2Client } from "google-auth-library";
 
 const errorSchema = {
     type: 'object',
@@ -47,10 +48,6 @@ export async function eventRoutes(app: FastifyInstance) {
         maxSpectators: z.number().int().min(0).max(100).default(2),
     });
     const updateEventSchema = createEventSchema.partial();
-    const paginationSchema = z.object({
-        page: z.string().regex(/^\d+$/).default('1').transform(Number),
-        limit: z.string().regex(/^\d+$/).default('10').transform(Number),
-    });
     const joinSchema = z.object({ role: z.enum(['player', 'spectator']) });
 
     // 1. CREATE
@@ -123,23 +120,58 @@ export async function eventRoutes(app: FastifyInstance) {
             }
         }
     }, async (req, reply) => {
-        const parse = paginationSchema.safeParse(req.query);
-        if (!parse.success) return reply.code(400).send({ error: "Invalid pagination" });
-        const { page, limit } = parse.data;
-        const offset = (page - 1) * limit;
+        const userId = req.user.id;
+
         try {
-            const [totalResult] = await db.select({ count: count() }).from(events);
+            // 1. Get IDs of groups I belong to
+            const myGroups = await db.select({ id: groupMembers.groupId })
+                .from(groupMembers).where(eq(groupMembers.userId, userId));
+            const myGroupIds = myGroups.map(g => g.id);
+
+            // 2. Get IDs of my friends
+            const myFriends = await db.select({ id: users.id })
+                .from(users)
+                .innerJoin(friendships, or(
+                    and(eq(friendships.requesterId, userId), eq(friendships.addresseeId, users.id), eq(friendships.status, 'accepted')),
+                    and(eq(friendships.addresseeId, userId), eq(friendships.requesterId, users.id), eq(friendships.status, 'accepted'))
+                ));
+            const myFriendIds = myFriends.map(f => f.id);
+
+            // Include myself in friend list logic so I can see my own "Friend Only" events
+            myFriendIds.push(userId);
+
             const data = await db.query.events.findMany({
+                where: (events, { and, or, eq, isNull, inArray }) => or(
+                    // A: Public Event (No Group, No Friend Only)
+                    and(isNull(events.groupId), eq(events.onlyFriends, false)),
+
+                    // B: I am the Host
+                    eq(events.hostId, userId),
+
+                    // C: Group Event AND I am in that group
+                    and(
+                        not(isNull(events.groupId)),
+                        myGroupIds.length > 0 ? inArray(events.groupId, myGroupIds) : undefined
+                    ),
+
+                    // D: Friends Only Event AND I am a friend of the host
+                    and(
+                        eq(events.onlyFriends, true),
+                        inArray(events.hostId, myFriendIds)
+                    )
+                ),
                 orderBy: [desc(events.startTime)],
-                limit, offset,
+                limit: 50,
                 with: {
-                    host: { columns: { id: true, username: true, avatarUrl: true } },
-                    participants: { columns: { role: true, userId: true } }
+                    host: { columns: { username: true, avatarUrl: true } },
+                    participants: { columns: { role: true } }
                 }
             });
-            return reply.send({ data, meta: { totalItems: totalResult.count, totalPages: Math.ceil(totalResult.count / limit), currentPage: page, itemsPerPage: limit } });
+
+            return reply.send({ data });
         } catch (err) {
-            return reply.code(500).send({ error: err });
+            console.error(err);
+            return reply.code(500).send({ error: "Database error" });
         }
     });
 
@@ -344,6 +376,51 @@ export async function eventRoutes(app: FastifyInstance) {
             return reply.send({ success: true, message: "Left event" });
         } catch (err) {
             return reply.code(500).send({ error: err });
+        }
+    });
+
+    // 8. ADD TO GOOGLE CALENDAR
+    app.post('/events/:id/calendar', {
+        onRequest: [app.authenticate],
+        schema: {
+            tags: ['Events'],
+            security: [{ apiKey: [] }],
+            body: {
+                type: 'object',
+                required: ['googleAccessToken'],
+                properties: { googleAccessToken: { type: 'string' } }
+            }
+        }
+    }, async (req, reply) => {
+        const eventId = parseInt((req.params as any).id);
+        const { googleAccessToken } = req.body as { googleAccessToken: string };
+
+        try {
+            const event = await db.query.events.findFirst({ where: eq(events.id, eventId) });
+            if (!event) return reply.code(404).send({ error: "Event not found" });
+
+            const oauth2Client = new OAuth2Client();
+            oauth2Client.setCredentials({ access_token: googleAccessToken });
+
+            const calendar = require('googleapis').google.calendar({ version: 'v3', auth: oauth2Client });
+
+            const calendarEvent = {
+                summary: `Nexus: ${event.title}`,
+                description: `Game: ${event.game}\n${event.description || ''}`,
+                start: { dateTime: event.startTime.toISOString() },
+                // Default to 2 hours duration if end time not set
+                end: { dateTime: new Date(event.startTime.getTime() + 2 * 60 * 60 * 1000).toISOString() },
+            };
+
+            const result = await calendar.events.insert({
+                calendarId: 'primary',
+                requestBody: calendarEvent,
+            });
+
+            return reply.send({ success: true, link: result.data.htmlLink });
+        } catch (err) {
+            req.log.error(err);
+            return reply.code(500).send({ error: "Failed to add to Google Calendar" });
         }
     });
 }

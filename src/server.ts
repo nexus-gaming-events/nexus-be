@@ -13,6 +13,7 @@ import { groupRoutes } from './routes/groups';
 import { chatRoutes } from './routes/chat';
 import { userRoutes } from "./routes/users";
 import { legalRoutes } from "./routes/legal";
+import { steamRoutes } from "./routes/steam";
 
 export function buildApp(): FastifyInstance {
     const app = Fastify({
@@ -61,6 +62,7 @@ export function buildApp(): FastifyInstance {
     app.register(chatRoutes);
     app.register(userRoutes);
     app.register(legalRoutes);
+    app.register(steamRoutes);
 
     // 4. HOME PAGE (Landing Page)
     app.get('/', async (req, reply) => {

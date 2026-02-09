@@ -1,7 +1,7 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
+import { eq, ilike } from "drizzle-orm";
 import { users } from "../db/schema";
 
 const errorSchema = {
@@ -179,6 +179,38 @@ export async function userRoutes(app: FastifyInstance) {
         } catch (err) {
             req.log.error(err);
             return reply.code(500).send({ error: "Failed to update profile" });
+        }
+    });
+
+    app.get('/users/search', {
+        onRequest: [app.authenticate],
+        schema: {
+            tags: ['Users'],
+            summary: 'Search users by username',
+            security: [{ apiKey: [] }],
+            querystring: {
+                type: 'object',
+                required: ['q'],
+                properties: { q: { type: 'string', minLength: 3 } }
+            }
+        }
+    }, async (req, reply) => {
+        const { q } = req.query as { q: string };
+
+        try {
+            // Case-insensitive search
+            const results = await db.query.users.findMany({
+                where: ilike(users.username, `%${q}%`),
+                columns: {
+                    id: true,
+                    username: true,
+                    avatarUrl: true
+                },
+                limit: 10
+            });
+            return reply.send(results);
+        } catch (err) {
+            return reply.code(500).send({ error: "Search failed" });
         }
     });
 

@@ -193,4 +193,32 @@ export async function friendRoutes(app: FastifyInstance) {
             return reply.code(500).send({ error: err });
         }
     });
+
+    app.get('/friends/sent', {
+        onRequest: [app.authenticate],
+        schema: {
+            tags: ['Friends'],
+            security: [{ apiKey: [] }]
+        }
+    }, async (req, reply) => {
+        const userId = req.user.id;
+        try {
+            const sent = await db.select({
+                targetId: users.id,
+                username: users.username,
+                avatarUrl: users.avatarUrl,
+                sentAt: friendships.createdAt
+            })
+                .from(friendships)
+                .innerJoin(users, eq(friendships.addresseeId, users.id)) // Join with the person we sent TO
+                .where(and(
+                    eq(friendships.requesterId, userId),
+                    eq(friendships.status, 'pending')
+                ));
+
+            return reply.send(sent);
+        } catch (err) {
+            return reply.code(500).send({ error: "DB Error" });
+        }
+    });
 }

@@ -283,7 +283,15 @@ export async function authRoutes(app: FastifyInstance) {
                         username: { type: 'string' },
                         email: { type: 'string', nullable: true },
                         avatarUrl: { type: 'string', nullable: true },
-                        bannerGradient: { type: 'object', properties: bannerGradientSchema, nullable: true },
+                        bannerGradient: {
+                            type: 'object',
+                            properties: {
+                                type: { type: 'string' },
+                                colors: { type: 'array', items: { type: 'string' } },
+                                parameter: { type: 'number' }
+                            },
+                            nullable: true,
+                        },
                     }
                 },
                 401: errorSchema,

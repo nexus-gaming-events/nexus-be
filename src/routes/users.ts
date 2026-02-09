@@ -114,8 +114,8 @@ export async function userRoutes(app: FastifyInstance) {
                 type: 'object',
                 properties: {
                     username: { type: 'string' },
+                    email: { type: 'string' },
                     avatarUrl: { type: 'string' },
-                    bio: { type: 'string' },
                     bannerGradient: {
                         type: 'object',
                         properties: {

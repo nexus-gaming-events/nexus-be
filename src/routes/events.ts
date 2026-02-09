@@ -51,6 +51,8 @@ export async function eventRoutes(app: FastifyInstance) {
         startTime: z.string().datetime(),
         maxPlayers: z.number().int().min(1).max(100).default(5),
         maxSpectators: z.number().int().min(0).max(100).default(2),
+        groupId: z.number().int().optional(),
+        onlyFriends: z.boolean().default(false).optional(),
     });
     const updateEventSchema = createEventSchema.partial();
     const joinSchema = z.object({ role: z.enum(['player', 'spectator']) });
@@ -72,6 +74,8 @@ export async function eventRoutes(app: FastifyInstance) {
                     startTime: { type: 'string', format: 'date-time' },
                     maxPlayers: { type: 'integer', default: 5 },
                     maxSpectators: { type: 'integer', default: 2 },
+                    groupId: { type: 'integer', nullable: true },
+                    onlyFriends: { type: 'boolean', default: false, nullable: true },
                 }
             },
             response: {

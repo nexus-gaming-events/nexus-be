@@ -281,7 +281,8 @@ export async function authRoutes(app: FastifyInstance) {
                         id: { type: 'integer' },
                         username: { type: 'string' },
                         email: { type: 'string', nullable: true },
-                        avatarUrl: { type: 'string', nullable: true }
+                        avatarUrl: { type: 'string', nullable: true },
+                        bannerGradient: { type: 'object', nullable: true },
                     }
                 },
                 401: errorSchema,
@@ -298,7 +299,8 @@ export async function authRoutes(app: FastifyInstance) {
                 id: user.id,
                 username: user.username,
                 email: user.email,
-                avatarUrl: user.avatarUrl
+                avatarUrl: user.avatarUrl,
+                bannerGradient: user.bannerGradient,
             });
         } catch (dbError) {
             return reply.code(500).send({ error: "Database error" });

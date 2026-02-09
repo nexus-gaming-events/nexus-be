@@ -38,9 +38,10 @@ const userResponseSchema = {
                 type: { type: 'string' },
                 colors: { type: 'array', items: { type: 'string' } },
                 parameter: { type: 'number' }
-            }
-        }
-    }
+            },
+            nullable: true,
+        },
+    },
 };
 
 export async function userRoutes(app: FastifyInstance) {
@@ -53,15 +54,7 @@ export async function userRoutes(app: FastifyInstance) {
             response: {
                 200: {
                     type: 'array',
-                    items: {
-                        type: 'object',
-                        properties: {
-                            id: { type: 'integer' },
-                            username: { type: 'string' },
-                            email: { type: 'string', nullable: true },
-                            avatarUrl: { type: 'string', nullable: true }
-                        }
-                    }
+                    items: userResponseSchema,
                 },
                 401: errorSchema,
                 500: errorSchema
@@ -89,15 +82,7 @@ export async function userRoutes(app: FastifyInstance) {
                 required: ['id']
             },
             response: {
-                200: {
-                    type: 'object',
-                    properties: {
-                        id: { type: 'integer' },
-                        username: { type: 'string' },
-                        email: { type: 'string', nullable: true },
-                        avatarUrl: { type: 'string', nullable: true }
-                    }
-                },
+                200: userResponseSchema,
                 401: errorSchema,
                 404: errorSchema,
                 500: errorSchema

@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { events, participants, messages, groupMembers, users, friendships } from '../db/schema';
-import { eq, and, count, desc, or, not } from 'drizzle-orm';
+import { eq, and, count, desc, or, not, inArray, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { OAuth2Client } from "google-auth-library";
 
@@ -25,6 +25,11 @@ const eventObj = {
         startTime: { type: 'string', format: 'date-time' },
         maxPlayers: { type: 'integer' },
         maxSpectators: { type: 'integer' },
+        playerCount: { type: 'integer' },
+        spectatorCount: { type: 'integer' },
+        groupId: { type: 'integer', nullable: true },
+        onlyFriends: { type: 'boolean' },
+        myRole: { type: 'string', nullable: true },
         host: { type: 'object', properties: { id: { type: 'integer' }, username: { type: 'string' }, avatarUrl: { type: 'string' } }, nullable: true }
     }
 };
@@ -121,14 +126,14 @@ export async function eventRoutes(app: FastifyInstance) {
         }
     }, async (req, reply) => {
         const userId = req.user.id;
+        const { page, limit } = req.query as { page: number, limit: number };
+        const offset = (page - 1) * limit;
 
         try {
-            // 1. Get IDs of groups I belong to
             const myGroups = await db.select({ id: groupMembers.groupId })
                 .from(groupMembers).where(eq(groupMembers.userId, userId));
             const myGroupIds = myGroups.map(g => g.id);
 
-            // 2. Get IDs of my friends
             const myFriends = await db.select({ id: users.id })
                 .from(users)
                 .innerJoin(friendships, or(
@@ -136,41 +141,54 @@ export async function eventRoutes(app: FastifyInstance) {
                     and(eq(friendships.addresseeId, userId), eq(friendships.requesterId, users.id), eq(friendships.status, 'accepted'))
                 ));
             const myFriendIds = myFriends.map(f => f.id);
-
-            // Include myself in friend list logic so I can see my own "Friend Only" events
             myFriendIds.push(userId);
 
-            const data = await db.query.events.findMany({
-                where: (events, { and, or, eq, isNull, inArray }) => or(
-                    // A: Public Event (No Group, No Friend Only)
-                    and(isNull(events.groupId), eq(events.onlyFriends, false)),
+            const visibilityFilters = (table: typeof events) => or(
+                and(isNull(table.groupId), eq(table.onlyFriends, false)), // Public
+                eq(table.hostId, userId), // Host
+                and(not(isNull(table.groupId)), myGroupIds.length > 0 ? inArray(table.groupId, myGroupIds) : undefined), // Group
+                and(eq(table.onlyFriends, true), inArray(table.hostId, myFriendIds)) // Friends
+            );
 
-                    // B: I am the Host
-                    eq(events.hostId, userId),
+            const allMatching = await db.select({ id: events.id }).from(events).where(visibilityFilters(events));
+            const totalItems = allMatching.length;
+            const totalPages = Math.ceil(totalItems / limit);
 
-                    // C: Group Event AND I am in that group
-                    and(
-                        not(isNull(events.groupId)),
-                        myGroupIds.length > 0 ? inArray(events.groupId, myGroupIds) : undefined
-                    ),
-
-                    // D: Friends Only Event AND I am a friend of the host
-                    and(
-                        eq(events.onlyFriends, true),
-                        inArray(events.hostId, myFriendIds)
-                    )
-                ),
+            const rawEvents = await db.query.events.findMany({
+                where: visibilityFilters(events),
                 orderBy: [desc(events.startTime)],
-                limit: 50,
+                limit: limit,
+                offset: offset,
                 with: {
                     host: { columns: { username: true, avatarUrl: true } },
-                    participants: { columns: { role: true } }
+                    participants: { columns: { role: true, userId: true } }
                 }
             });
 
-            return reply.send({ data });
+            const data = rawEvents.map(event => {
+                const playerCount = event.participants.filter(p => p.role === 'player').length;
+                const spectatorCount = event.participants.filter(p => p.role === 'spectator').length;
+                const myParticipation = event.participants.find(p => p.userId === userId);
+
+                return {
+                    ...event,
+                    playerCount,
+                    spectatorCount,
+                    myRole: myParticipation ? myParticipation.role : null,
+                };
+            });
+
+            return reply.send({
+                data,
+                meta: {
+                    totalItems,
+                    totalPages,
+                    currentPage: page,
+                    itemsPerPage: limit
+                }
+            });
         } catch (err) {
-            console.error(err);
+            req.log.error(err);
             return reply.code(500).send({ error: "Database error" });
         }
     });
@@ -180,11 +198,16 @@ export async function eventRoutes(app: FastifyInstance) {
         onRequest: [app.authenticate],
         schema: {
             tags: ['Events'],
-            security: [{ apiKey: [] }],
-            params: { type: 'object', properties: { id: { type: 'integer' } } },
+            summary: 'Get a single event details',
+            params: {
+                type: 'object',
+                properties: {
+                    id: { type: 'integer' }
+                }
+            },
             response: {
                 200: {
-                    ...eventObj,
+                    type: 'object',
                     properties: {
                         ...eventObj.properties,
                         participants: {
@@ -192,33 +215,61 @@ export async function eventRoutes(app: FastifyInstance) {
                             items: {
                                 type: 'object',
                                 properties: {
-                                    role: { type: 'string', enum: ['player', 'spectator'] },
-                                    user: { type: 'object', properties: { id: { type: 'integer' }, username: { type: 'string' }, avatarUrl: { type: 'string' } } }
+                                    userId: { type: 'integer' },
+                                    role: { type: 'string' },
+                                    user: {
+                                        type: 'object',
+                                        properties: {
+                                            username: { type: 'string' },
+                                            avatarUrl: { type: 'string', nullable: true }
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
                 },
-                400: errorSchema,
                 404: errorSchema,
-                500: errorSchema
+                500: errorSchema,
             }
         }
     }, async (req, reply) => {
-        const eventId = parseInt((req.params as any).id);
-        if (isNaN(eventId)) return reply.code(400).send({ error: "Invalid ID" });
+        const { id } = req.params as { id: number };
+        const userId = req.user.id;
+
         try {
             const event = await db.query.events.findFirst({
-                where: eq(events.id, eventId),
+                where: eq(events.id, id),
                 with: {
-                    host: { columns: { id: true, username: true, avatarUrl: true } },
-                    participants: { with: { user: { columns: { id: true, username: true, avatarUrl: true, steamId: true } } } }
+                    host: {
+                        columns: { id: true, username: true, avatarUrl: true }
+                    },
+                    participants: {
+                        columns: { role: true, userId: true },
+                        with: {
+                            user: { columns: { username: true, avatarUrl: true } }
+                        }
+                    }
                 }
             });
-            if (!event) return reply.code(404).send({ error: "Event not found" });
-            return reply.send(event);
+
+            if (!event) {
+                return reply.code(404).send({ error: "Event not found" });
+            }
+
+            const playerCount = event.participants.filter(p => p.role === 'player').length;
+            const spectatorCount = event.participants.filter(p => p.role === 'spectator').length;
+            const myParticipation = event.participants.find(p => p.userId === userId);
+
+            return reply.send({
+                ...event,
+                playerCount,
+                spectatorCount,
+                myRole: myParticipation ? myParticipation.role : null
+            });
         } catch (err) {
-            return reply.code(500).send({ error: err });
+            req.log.error(err);
+            return reply.code(500).send({ error: "Database error" });
         }
     });
 

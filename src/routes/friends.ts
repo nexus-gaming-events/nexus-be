@@ -221,4 +221,57 @@ export async function friendRoutes(app: FastifyInstance) {
             return reply.code(500).send({ error: "DB Error" });
         }
     });
+
+    // DECLINE / DELETE FRIEND REQUEST
+    app.delete('/friends/requests/:requesterId', {
+        onRequest: [app.authenticate],
+        schema: {
+            tags: ['Friends'],
+            summary: 'Decline an incoming friend request',
+            params: {
+                type: 'object',
+                properties: {
+                    requesterId: { type: 'integer' }
+                }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    properties: {
+                        success: { type: 'boolean' },
+                        message: { type: 'string' }
+                    }
+                },
+                400: errorSchema,
+                404: errorSchema,
+                500: errorSchema,
+            }
+        }
+    }, async (req, reply) => {
+        const { requesterId } = req.params as { requesterId: number };
+        const myId = req.user.id; // I am the one rejecting the request
+
+        try {
+            // Delete the friendship row ONLY IF:
+            // 1. It was sent BY the requesterId
+            // 2. It was sent TO me (myId)
+            // 3. The status is 'pending'
+            const deleted = await db.delete(friendships)
+                .where(and(
+                    eq(friendships.requesterId, requesterId),
+                    eq(friendships.addresseeId, myId),
+                    eq(friendships.status, 'pending')
+                ))
+                .returning();
+
+            if (deleted.length === 0) {
+                return reply.code(404).send({ error: "Friend request not found or already handled" });
+            }
+
+            return reply.send({ success: true, message: "Friend request declined" });
+        } catch (err) {
+            req.log.error(err);
+            return reply.code(500).send({ error: "Failed to decline request" });
+        }
+    });
 }

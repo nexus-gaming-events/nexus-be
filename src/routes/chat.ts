@@ -98,14 +98,19 @@ export async function chatRoutes(app: FastifyInstance) {
             const decoded = app.jwt.verify<{ id: number, username: string }>(query.token);
             userId = decoded.id;
             username = decoded.username;
+        } catch (e) {
+            socket.close(1008, "Unauthorized");
+            return;
+        }
 
+        try {
             const user = await db.query.users.findFirst({ where: eq(users.id, userId), columns: { id: true, avatarUrl: true, username: true } });
             if (!user) throw new Error("User not found");
 
             username = user.username;
             avatarUrl = user.avatarUrl;
         } catch (e) {
-            socket.close(1008, "Unauthorized");
+            socket.close(1011, e instanceof Error ? e.message : "Internal error");
             return;
         }
 
@@ -123,7 +128,7 @@ export async function chatRoutes(app: FastifyInstance) {
             try {
                 const content = raw.toString().trim();
                 if (!content) return;
-                const [saved] = await db.insert(messages).values({ eventId, userId, content }).returning();
+                const [saved] = await db.insert(messages).values({ eventId, userId, username, content, avatarUrl }).returning();
                 const payload = JSON.stringify({ type: 'MESSAGE', id: saved.id, userId, username, content, avatarUrl, createdAt: saved.createdAt });
                 for (const client of room) {
                     if (client.readyState === WebSocket.OPEN) client.send(payload);

@@ -292,6 +292,8 @@ export async function eventRoutes(app: FastifyInstance) {
                     game: { type: 'string' },
                     startTime: { type: 'string', format: 'date-time' },
                     maxPlayers: { type: 'integer' },
+                    groupId: { type: 'integer', nullable: true },
+                    onlyFriends: { type: 'boolean', default: false, nullable: true },
                 }
             },
             response: {

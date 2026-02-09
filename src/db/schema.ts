@@ -96,6 +96,8 @@ export const messages = pgTable('messages', {
     eventId: integer('event_id').references(() => events.id).notNull(),
     userId: integer('user_id').references(() => users.id).notNull(),
     content: text('content').notNull(),
+    username: text('username').notNull(),
+    avatarUrl: text('avatar_url'),
     createdAt: timestamp('created_at').defaultNow(),
 });
 

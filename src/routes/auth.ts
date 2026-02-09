@@ -5,6 +5,7 @@ import { db } from '../db';
 import { users } from '../db/schema';
 import { eq, or } from 'drizzle-orm';
 import { z } from 'zod';
+import { bannerGradientSchema } from "./users";
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 const STEAM_API_KEY = process.env.STEAM_API_KEY;
@@ -282,7 +283,7 @@ export async function authRoutes(app: FastifyInstance) {
                         username: { type: 'string' },
                         email: { type: 'string', nullable: true },
                         avatarUrl: { type: 'string', nullable: true },
-                        bannerGradient: { type: 'object', nullable: true },
+                        bannerGradient: { type: 'object', properties: bannerGradientSchema, nullable: true },
                     }
                 },
                 401: errorSchema,

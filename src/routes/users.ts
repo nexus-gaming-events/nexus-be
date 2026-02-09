@@ -13,8 +13,8 @@ const errorSchema = {
     }
 };
 
-const bannerGradientSchema = z.object({
-    type: z.enum(['linear', 'radial']).default('linear'),
+export const bannerGradientSchema = z.object({
+    type: z.string().default('linear'),
     colors: z.array(z.string()).min(2), // Validates array of color strings
     parameter: z.number().default(0.0) // Angle or radius
 });
@@ -119,7 +119,7 @@ export async function userRoutes(app: FastifyInstance) {
                     bannerGradient: {
                         type: 'object',
                         properties: {
-                            type: { type: 'string', enum: ['linear', 'radial'] },
+                            type: { type: 'string' },
                             colors: { type: 'array', items: { type: 'string' } },
                             parameter: { type: 'number' }
                         }

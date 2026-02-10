@@ -55,11 +55,11 @@ export function buildApp(): FastifyInstance {
     });
 
     // 3. Register Business Routes
+    app.register(chatRoutes);
     app.register(authRoutes);
     app.register(eventRoutes);
     app.register(friendRoutes);
     app.register(groupRoutes);
-    app.register(chatRoutes);
     app.register(userRoutes);
     app.register(legalRoutes);
     app.register(steamRoutes);

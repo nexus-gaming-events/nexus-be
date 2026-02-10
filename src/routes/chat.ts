@@ -22,6 +22,11 @@ export async function chatRoutes(app: FastifyInstance) {
         limit: z.string().regex(/^\d+$/).default('50').transform(Number),
     });
 
+    // Explicitly check if websocket support is active
+    if (!app.hasDecorator('websocketServer')) {
+        app.log.error("WebSocket plugin not registered!");
+    }
+
     // HTTP History
     app.get('/events/:id/messages', {
         onRequest: [app.authenticate],

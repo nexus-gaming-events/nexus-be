@@ -10,7 +10,8 @@ export async function steamRoutes(app: FastifyInstance) {
                 type: 'object',
                 required: ['q'],
                 properties: { q: { type: 'string' } }
-            }
+            },
+            security: [{ apiKey: [] }],
         }
     }, async (req, reply) => {
         const query = (req.query as any).q;

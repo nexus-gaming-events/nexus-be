@@ -15,18 +15,18 @@ import { userRoutes } from "./routes/users";
 import { legalRoutes } from "./routes/legal";
 import { steamRoutes } from "./routes/steam";
 
-export function buildApp(): FastifyInstance {
+export async function buildApp(): Promise<FastifyInstance> {
     const app = Fastify({
         logger: process.env.NODE_ENV !== 'test', // Keep logs off during tests
     });
 
     // 1. Core Plugins
-    app.register(cors, { origin: '*' });
-    app.register(authPlugin);
-    app.register(fastifyWebsocket);
+    await app.register(cors, { origin: '*' });
+    await app.register(authPlugin);
+    await app.register(fastifyWebsocket);
 
     // 2. Swagger Configuration (Restored)
-    app.register(swagger, {
+    await app.register(swagger, {
         swagger: {
             info: {
                 title: 'Nexus API',
@@ -45,7 +45,7 @@ export function buildApp(): FastifyInstance {
         }
     });
 
-    app.register(swaggerUi, {
+    await app.register(swaggerUi, {
         routePrefix: '/docs',
         staticCSP: true,
         transformStaticCSP: (header) => header,
@@ -148,14 +148,17 @@ export function buildApp(): FastifyInstance {
 }
 
 if (require.main === module) {
-    const app = buildApp();
-    const port = parseInt(process.env.PORT || '3000');
+    buildApp()
+        .then(app => {
+            const port = parseInt(process.env.PORT || '3000');
 
-    app.listen({ port, host: '0.0.0.0' }).then(() => {
-        console.log(`Server running at http://localhost:${port}`);
-        console.log(`Swagger docs available at http://localhost:${port}/docs`);
-    }).catch((err) => {
-        console.error(err);
-        process.exit(1);
-    });
+            app.listen({ port, host: '0.0.0.0' }).then(() => {
+                console.log(`Server running at http://localhost:${port}`);
+                console.log(`Swagger docs available at http://localhost:${port}/docs`);
+            }).catch((err) => {
+                console.error(err);
+                process.exit(1);
+            });
+        })
+        .catch(err => console.error(err));
 }

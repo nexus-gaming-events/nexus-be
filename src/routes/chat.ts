@@ -97,6 +97,11 @@ export async function chatRoutes(app: FastifyInstance) {
         const socket = connection.socket as WebSocket;
         const query = req.query as { token: string; eventId: string };
 
+        if (!connection || !connection.socket) {
+            req.log.error("Incoming request is not a WebSocket upgrade.");
+            return;
+        }
+
         let userId: number;
         let username: string;
         let avatarUrl: string | null;

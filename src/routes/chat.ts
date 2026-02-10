@@ -9,7 +9,10 @@ const rooms = new Map<number, Set<WebSocket>>();
 
 const errorSchema = {
     type: 'object',
-    properties: { error: { type: 'string' } }
+    properties: {
+        error: { type: 'string' },
+        details: { type: 'object', additionalProperties: true, nullable: true }
+    }
 };
 
 export async function chatRoutes(app: FastifyInstance) {

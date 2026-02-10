@@ -6,7 +6,10 @@ import { z } from 'zod';
 
 const errorSchema = {
     type: 'object',
-    properties: { error: { type: 'string' }, details: { type: 'object', nullable: true } }
+    properties: {
+        error: { type: 'string' },
+        details: { type: 'object', additionalProperties: true, nullable: true }
+    }
 };
 
 const groupObj = {

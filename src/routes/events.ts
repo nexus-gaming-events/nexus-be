@@ -9,7 +9,7 @@ const errorSchema = {
     type: 'object',
     properties: {
         error: { type: 'string' },
-        details: { type: 'object', nullable: true }
+        details: { type: 'object', additionalProperties: true, nullable: true }
     }
 };
 

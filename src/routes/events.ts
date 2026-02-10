@@ -51,7 +51,7 @@ export async function eventRoutes(app: FastifyInstance) {
         startTime: z.string().datetime(),
         maxPlayers: z.number().int().min(1).max(100).default(5),
         maxSpectators: z.number().int().min(0).max(100).default(2),
-        groupId: z.number().int().optional(),
+        groupId: z.number().int().nullish(),
         onlyFriends: z.boolean().default(false).optional(),
     });
     const updateEventSchema = createEventSchema.partial();

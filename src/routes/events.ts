@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { db } from '../db';
 import { events, participants, messages, groupMembers, users, friendships } from '../db/schema';
-import { eq, and, count, desc, or, not, inArray, isNull } from 'drizzle-orm';
+import { eq, and, count, desc, or, inArray, isNull, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { OAuth2Client } from "google-auth-library";
 
@@ -147,19 +147,62 @@ export async function eventRoutes(app: FastifyInstance) {
             const myFriendIds = myFriends.map(f => f.id);
             myFriendIds.push(userId);
 
-            const visibilityFilters = (table: typeof events) => or(
-                and(isNull(table.groupId), eq(table.onlyFriends, false)), // Public
-                eq(table.hostId, userId), // Host
-                and(not(isNull(table.groupId)), myGroupIds.length > 0 ? inArray(table.groupId, myGroupIds) : undefined), // Group
-                and(eq(table.onlyFriends, true), inArray(table.hostId, myFriendIds)) // Friends
-            );
+            const buildVisibilityFilters = () => {
+                // Start with the base conditions that always apply
+                const conditions = [
+                    // Condition A: Public Events
+                    // Must have NO group AND (onlyFriends is false OR null)
+                    and(
+                        isNull(events.groupId),
+                        or(eq(events.onlyFriends, false), isNull(events.onlyFriends))
+                    ),
 
-            const allMatching = await db.select({ id: events.id }).from(events).where(visibilityFilters(events));
+                    // Condition B: I am the Host (I can always see my own events)
+                    eq(events.hostId, userId)
+                ];
+
+                // Condition C: Group Events
+                // Only add this filter if I am actually in some groups
+                if (myGroupIds.length > 0) {
+                    conditions.push(
+                        and(
+                            isNotNull(events.groupId),
+                            inArray(events.groupId, myGroupIds)
+                        )
+                    );
+                }
+
+                // Condition D: Friend-Only Events
+                // Only add this filter if I have friends
+                if (myFriendIds.length > 0) {
+                    conditions.push(
+                        and(
+                            eq(events.onlyFriends, true),
+                            inArray(events.hostId, myFriendIds)
+                        )
+                    );
+                }
+
+                // Combine all valid conditions with OR
+                return or(...conditions);
+            };
+
+            // DEBUG: Log the Generated SQL to console
+            // This will help us see exactly what Drizzle is asking Postgres
+            const filters = buildVisibilityFilters();
+
+            // 4. Fetch Totals & Data
+            const allMatching = await db.select({ id: events.id })
+                .from(events)
+                .where(filters);
             const totalItems = allMatching.length;
             const totalPages = Math.ceil(totalItems / limit);
 
+            const query = db.select().from(events).where(filters).toSQL();
+            console.log('GENERATED SQL:', query);
+
             const rawEvents = await db.query.events.findMany({
-                where: visibilityFilters(events),
+                where: filters,
                 orderBy: [desc(events.startTime)],
                 limit: limit,
                 offset: offset,

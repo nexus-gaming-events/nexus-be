@@ -55,14 +55,14 @@ export async function buildApp(): Promise<FastifyInstance> {
     });
 
     // 3. Register Business Routes
-    app.register(chatRoutes);
-    app.register(authRoutes);
-    app.register(eventRoutes);
-    app.register(friendRoutes);
-    app.register(groupRoutes);
-    app.register(userRoutes);
-    app.register(legalRoutes);
-    app.register(steamRoutes);
+    await app.register(chatRoutes);
+    await app.register(authRoutes);
+    await app.register(eventRoutes);
+    await app.register(friendRoutes);
+    await app.register(groupRoutes);
+    await app.register(userRoutes);
+    await app.register(legalRoutes);
+    await app.register(steamRoutes);
 
     // 4. HOME PAGE (Landing Page)
     app.get('/', async (req, reply) => {

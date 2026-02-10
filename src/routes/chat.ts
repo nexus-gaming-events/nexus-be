@@ -93,11 +93,10 @@ export async function chatRoutes(app: FastifyInstance) {
                 }
             }
         }
-    }, async (connection: any, req) => {
-        const socket = connection.socket as WebSocket;
+    }, async (socket, req) => {
         const query = req.query as { token: string; eventId: string };
 
-        if (!connection || !connection.socket) {
+        if (!socket) {
             req.log.error("Incoming request is not a WebSocket upgrade.");
             return;
         }
@@ -154,6 +153,14 @@ export async function chatRoutes(app: FastifyInstance) {
         socket.on('close', () => {
             room.delete(socket);
             if (room.size === 0) rooms.delete(eventId);
+        });
+    });
+
+    app.get('/ws/ping', { websocket: true }, (socket, req) => {
+        console.log("Ping route hit!");
+        socket.on('message', (msg) => {
+            console.log("Received:", msg.toString());
+            socket.send(`Pong: ${msg.toString()}`);
         });
     });
 }

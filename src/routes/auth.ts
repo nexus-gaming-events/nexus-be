@@ -170,7 +170,10 @@ export async function authRoutes(app: FastifyInstance) {
         let result: AuthResult;
 
         if (provider === 'google') result = await verifyGoogleToken(token);
-        else result = await verifyDiscordToken(token);
+        else if (provider === 'discord') result = await verifyDiscordToken(token);
+        else {
+            return reply.code(400).send({ error: `Unsupported provider ${provider}` });
+        }
 
         if (!result.success) return reply.code(401).send({ error: "Authentication failed", details: result.error });
 
@@ -312,6 +315,53 @@ export async function authRoutes(app: FastifyInstance) {
             });
         } catch (dbError) {
             return reply.code(500).send({ error: "Database error" });
+        }
+    });
+
+    app.get("/auth/discord/callback", {
+        schema: {
+            tags: ['Auth'],
+            summary: 'Handle Discord OAuth Callback',
+            querystring: {
+                type: 'object',
+                required: ['code'],
+                properties: { code: { type: 'string' } }
+            },
+            response: {
+                200: {
+                    type: 'object',
+                    properties: { token: { type: 'string' }, user: { type: 'object' } }
+                },
+                400: errorSchema,
+                401: errorSchema,
+                500: errorSchema
+            }
+        },
+    }, async (req, reply) => {
+        const { code } = req.query as { code: string };
+        console.log("Received Discord code:", code);
+
+        try {
+            const tokenResponse = await axios.post(
+                'https://discord.com/api/oauth2/token',
+                new URLSearchParams({
+                    client_id: process.env.DISCORD_CLIENT_ID!,
+                    client_secret: process.env.DISCORD_CLIENT_SECRET!,
+                    grant_type: 'authorization_code',
+                    code: code,
+                    redirect_uri: process.env.DISCORD_REDIRECT_URI!,
+                }).toString(),
+                { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+            );
+
+            const discordAccessToken = tokenResponse.data.access_token;
+            const discordRefreshToken = tokenResponse.data.refresh_token;
+            console.log("Discord Access Token:", discordAccessToken);
+
+            return reply.redirect(`nexusapp://discord-callback?access_token=${discordAccessToken}&refresh_token=${discordRefreshToken}`);
+        } catch (err) {
+            req.log.error(err);
+            return reply.code(500).send("Authentication failed");
         }
     });
 }
